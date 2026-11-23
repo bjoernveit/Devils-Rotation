@@ -74,6 +74,34 @@ service cloud.firestore {
           data.clockMode is string
           && data.clockMode in ['half', 'quarter']
         ))
+        && (!('keysNotes' in data) || (
+          data.keysNotes is string
+          && data.keysNotes.size() <= 4000
+        ))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSavedGame(data, userId) {
+      return data is map
+        && data.ownerId is string
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.title is string
+        && data.title.size() >= 1
+        && data.title.size() <= 80
+        && (!('gameDate' in data) || (
+          data.gameDate is string
+          && data.gameDate.size() <= 20
+        ))
+        && data.players is list
+        && data.players.size() <= 40
+        && (data.players.size() == 0 || data.players[0] is map)
+        && isValidLineupsMap(data.lineups)
+        && (!('keysNotes' in data) || (
+          data.keysNotes is string
+          && data.keysNotes.size() <= 4000
+        ))
+        && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
 
@@ -116,7 +144,7 @@ service cloud.firestore {
           && isValidId(planId)
           && isOwner(userId)
           && incoming().keys().hasAll(['ownerId', 'players', 'lineups', 'updatedAt'])
-          && incoming().keys().hasOnly(['ownerId', 'players', 'lineups', 'completedMinutes', 'clockMode', 'updatedAt'])
+          && incoming().keys().hasOnly(['ownerId', 'players', 'lineups', 'completedMinutes', 'clockMode', 'keysNotes', 'updatedAt'])
           && isValidGamePlan(incoming(), userId)
           && incoming().updatedAt == request.time
           && hasValidParentUser(userId);
@@ -125,13 +153,47 @@ service cloud.firestore {
           && isValidId(planId)
           && isOwner(userId)
           && isValidGamePlan(incoming(), userId)
-          && incoming().diff(existing()).affectedKeys().hasOnly(['players', 'lineups', 'completedMinutes', 'clockMode', 'updatedAt'])
+          && incoming().diff(existing()).affectedKeys().hasOnly(['players', 'lineups', 'completedMinutes', 'clockMode', 'keysNotes', 'updatedAt'])
           && incoming().ownerId == existing().ownerId
           && incoming().updatedAt == request.time
           && hasValidParentUser(userId);
 
         allow delete: if isValidId(userId)
           && isValidId(planId)
+          && isOwner(userId)
+          && hasValidParentUser(userId);
+      }
+
+      match /games/{gameId} {
+        allow get: if isValidId(userId)
+          && isValidId(gameId)
+          && isOwner(userId)
+          && hasValidParentUser(userId);
+
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+
+        allow create: if isValidId(userId)
+          && isValidId(gameId)
+          && isOwner(userId)
+          && incoming().keys().hasAll(['ownerId', 'title', 'players', 'lineups', 'createdAt', 'updatedAt'])
+          && incoming().keys().hasOnly(['ownerId', 'title', 'gameDate', 'players', 'lineups', 'keysNotes', 'createdAt', 'updatedAt'])
+          && isValidSavedGame(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasValidParentUser(userId);
+
+        allow update: if isValidId(userId)
+          && isValidId(gameId)
+          && isOwner(userId)
+          && isValidSavedGame(incoming(), userId)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'gameDate', 'players', 'lineups', 'keysNotes', 'updatedAt'])
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && hasValidParentUser(userId);
+
+        allow delete: if isValidId(userId)
+          && isValidId(gameId)
           && isOwner(userId)
           && hasValidParentUser(userId);
       }

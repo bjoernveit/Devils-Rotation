@@ -6,14 +6,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import {
+  collection,
+  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
+  query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
+  where,
 } from 'firebase/firestore';
 import {
+  BookmarkPlus,
   Check,
   Copy,
   FileCode2,
@@ -24,10 +30,15 @@ import {
   Trash2,
 } from 'lucide-react';
 import { AuthScreen } from './components/AuthScreen';
+import {
+  GameKeysNotes,
+  MAX_KEYS_NOTES_LENGTH,
+} from './components/GameKeysNotes';
 import { LineupBoard } from './components/LineupBoard';
 import { MarkdownModal } from './components/MarkdownModal';
 import { MinuteTable } from './components/MinuteTable';
 import { RosterPanel } from './components/RosterPanel';
+import { SavedGamesSection } from './components/SavedGamesSection';
 import { SubstitutionTimeline } from './components/SubstitutionTimeline';
 import {
   PendingSwapRequest,
@@ -50,11 +61,13 @@ import {
   LineupSlot,
   Player,
   PlayerIntervalState,
+  SavedGame,
 } from './types/rotation';
 import {
   createId,
   generateObsidianMarkdown,
   getIntervalSummary,
+  mergeSavedGameAsBasis,
   parseObsidianMarkdown,
   promoteHalfSlotToFull,
   removePlayerFromSlots,
@@ -99,6 +112,25 @@ function sanitizeClockMode(value: unknown): ClockDisplayMode {
   return value === 'quarter' ? 'quarter' : 'half';
 }
 
+function sanitizeKeysNotes(value: unknown): string {
+  return typeof value === 'string'
+    ? value.slice(0, MAX_KEYS_NOTES_LENGTH)
+    : '';
+}
+
+function toMillis(value: unknown): number {
+  if (value instanceof Timestamp) return value.toMillis();
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'toMillis' in value &&
+    typeof (value as { toMillis: unknown }).toMillis === 'function'
+  ) {
+    return (value as { toMillis: () => number }).toMillis();
+  }
+  return 0;
+}
+
 function sanitizePlanPayload(plan: GamePlan) {
   return {
     players: plan.players.slice(0, 40).map((p) => ({
@@ -115,10 +147,11 @@ function sanitizePlanPayload(plan: GamePlan) {
     },
     completedMinutes: sanitizeCompletedMinutes(plan.completedMinutes),
     clockMode: sanitizeClockMode(plan.clockMode),
+    keysNotes: sanitizeKeysNotes(plan.keysNotes),
   };
 }
 
-type MobileSection = 'table' | 'subs' | 'lineups' | 'roster';
+type MobileSection = 'table' | 'subs' | 'lineups' | 'roster' | 'games';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -132,6 +165,10 @@ export default function App() {
   const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
   const pendingWritesRef = useRef<number>(0);
   const planExistsOnServerRef = useRef<boolean>(false);
+  const notesTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [savedGames, setSavedGames] = useState<SavedGame[]>([]);
+  const [isSaveGameModalOpen, setIsSaveGameModalOpen] = useState(false);
 
   const [selectedInterval, setSelectedInterval] =
     useState<IntervalKey>('Starting');
@@ -176,6 +213,7 @@ export default function App() {
       setAuthReady(true);
       if (!nextUser) {
         setProfileUsername(null);
+        setSavedGames([]);
         planExistsOnServerRef.current = false;
         setPlanLoading(false);
       }
@@ -189,6 +227,7 @@ export default function App() {
 
     let cancelled = false;
     let unsubPlan: (() => void) | null = null;
+    let unsubGames: (() => void) | null = null;
     planExistsOnServerRef.current = false;
     setPlanLoading(true);
 
@@ -279,6 +318,7 @@ export default function App() {
             lineups: data.lineups ?? DEFAULT_GAME_PLAN.lineups,
             completedMinutes: sanitizeCompletedMinutes(data.completedMinutes),
             clockMode: sanitizeClockMode(data.clockMode),
+            keysNotes: sanitizeKeysNotes(data.keysNotes),
           };
           planExistsOnServerRef.current = true;
           if (!cancelled) {
@@ -318,6 +358,7 @@ export default function App() {
             lineups: data.lineups ?? DEFAULT_GAME_PLAN.lineups,
             completedMinutes: sanitizeCompletedMinutes(data.completedMinutes),
             clockMode: sanitizeClockMode(data.clockMode),
+            keysNotes: sanitizeKeysNotes(data.keysNotes),
           };
           planExistsOnServerRef.current = true;
           planRef.current = loaded;
@@ -333,13 +374,53 @@ export default function App() {
           }
         }
       );
+
+      const gamesPath = `users/${user.uid}/games`;
+      const gamesQuery = query(
+        collection(db, 'users', user.uid, 'games'),
+        where('ownerId', '==', user.uid)
+      );
+      unsubGames = onSnapshot(
+        gamesQuery,
+        (snapshot) => {
+          if (cancelled) return;
+          const items: SavedGame[] = snapshot.docs.map((docSnap) => {
+            const d = docSnap.data();
+            return {
+              id: docSnap.id,
+              title: typeof d.title === 'string' ? d.title : 'Spiel',
+              gameDate: typeof d.gameDate === 'string' ? d.gameDate : '',
+              players: Array.isArray(d.players) ? d.players : [],
+              lineups: d.lineups ?? DEFAULT_GAME_PLAN.lineups,
+              keysNotes: sanitizeKeysNotes(d.keysNotes),
+              createdAtMs: toMillis(d.createdAt),
+              updatedAtMs: toMillis(d.updatedAt),
+            };
+          });
+          items.sort((a, b) => b.updatedAtMs - a.updatedAtMs);
+          setSavedGames(items);
+        },
+        (error) => {
+          if (cancelled) return;
+          try {
+            handleFirestoreError(error, OperationType.LIST, gamesPath);
+          } catch (wrapped) {
+            setFatalError(wrapped as Error);
+          }
+        }
+      );
     };
 
     void bootstrapAndSubscribe();
 
     return () => {
       cancelled = true;
+      if (notesTimerRef.current) {
+        clearTimeout(notesTimerRef.current);
+        notesTimerRef.current = null;
+      }
       if (unsubPlan) unsubPlan();
+      if (unsubGames) unsubGames();
     };
   }, [authReady, user]);
 
@@ -829,6 +910,120 @@ export default function App() {
     }));
   };
 
+  const handleKeysNotesChange = (nextNotes: string) => {
+    const clean = nextNotes.slice(0, MAX_KEYS_NOTES_LENGTH);
+    const nextPlan: GamePlan = {
+      ...planRef.current,
+      keysNotes: clean,
+    };
+    planRef.current = nextPlan;
+    setPlan(nextPlan);
+
+    if (notesTimerRef.current) {
+      clearTimeout(notesTimerRef.current);
+    }
+    if (user) {
+      const uid = user.uid;
+      notesTimerRef.current = setTimeout(() => {
+        notesTimerRef.current = null;
+        persistPlanToFirestore(uid, planRef.current);
+      }, 350);
+    }
+  };
+
+  const handleKeysNotesFlush = () => {
+    if (notesTimerRef.current) {
+      clearTimeout(notesTimerRef.current);
+      notesTimerRef.current = null;
+      if (user) {
+        persistPlanToFirestore(user.uid, planRef.current);
+      }
+    }
+  };
+
+  const handleSaveNewGame = async ({
+    title,
+    gameDate,
+    keysNotes,
+  }: {
+    title: string;
+    gameDate: string;
+    keysNotes: string;
+  }) => {
+    if (!user) return;
+    const gameId = `g-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const gamePath = `users/${user.uid}/games/${gameId}`;
+    const payload = sanitizePlanPayload(planRef.current);
+
+    if (keysNotes !== (planRef.current.keysNotes ?? '')) {
+      handleKeysNotesChange(keysNotes);
+      handleKeysNotesFlush();
+    }
+
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'games', gameId), {
+        ownerId: user.uid,
+        title: title.trim().slice(0, 80),
+        gameDate: gameDate.trim().slice(0, 20),
+        players: payload.players,
+        lineups: payload.lineups,
+        keysNotes: sanitizeKeysNotes(keysNotes),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      try {
+        handleFirestoreError(err, OperationType.CREATE, gamePath);
+      } catch (wrapped) {
+        setFatalError(wrapped as Error);
+      }
+    }
+  };
+
+  const handleUpdateSavedGameWithCurrent = async (game: SavedGame) => {
+    if (!user) return;
+    const gamePath = `users/${user.uid}/games/${game.id}`;
+    const payload = sanitizePlanPayload(planRef.current);
+    try {
+      await updateDoc(doc(db, 'users', user.uid, 'games', game.id), {
+        players: payload.players,
+        lineups: payload.lineups,
+        keysNotes: payload.keysNotes,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      try {
+        handleFirestoreError(err, OperationType.UPDATE, gamePath);
+      } catch (wrapped) {
+        setFatalError(wrapped as Error);
+      }
+    }
+  };
+
+  const handleDeleteGame = async (gameId: string) => {
+    if (!user) return;
+    const gamePath = `users/${user.uid}/games/${gameId}`;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'games', gameId));
+    } catch (err) {
+      try {
+        handleFirestoreError(err, OperationType.DELETE, gamePath);
+      } catch (wrapped) {
+        setFatalError(wrapped as Error);
+      }
+    }
+  };
+
+  const handleLoadGameAsBasis = (game: SavedGame) => {
+    if (notesTimerRef.current) {
+      clearTimeout(notesTimerRef.current);
+      notesTimerRef.current = null;
+    }
+    commitPlan((prev) => mergeSavedGameAsBasis(game, prev.players, prev.clockMode));
+    setSelectedPlayerId(null);
+    setMobileSection('table');
+  };
+
   const handleSignOut = async () => {
     await signOut(auth);
     setSelectedPlayerId(null);
@@ -891,6 +1086,12 @@ export default function App() {
             >
               Kader
             </a>
+            <a
+              href="#spiele"
+              className="hover:text-stone-900 dark:hover:text-stone-100 transition-colors whitespace-nowrap shrink-0"
+            >
+              Spiele
+            </a>
             <button
               type="button"
               onClick={() => setIsMarkdownOpen(true)}
@@ -941,6 +1142,16 @@ export default function App() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsSaveGameModalOpen(true)}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-600/30 bg-red-600/10 hover:bg-red-600/20 text-red-700 dark:text-red-400 inline-flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+            title="Aktuelles Lineup für ein Spiel speichern"
+          >
+            <BookmarkPlus className="w-3.5 h-3.5" />
+            <span>Spiel speichern</span>
+          </button>
+
           <button
             type="button"
             onClick={() => setIsMarkdownOpen(true)}
@@ -1000,7 +1211,7 @@ export default function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-4 pb-24 lg:pb-10 flex-1 space-y-6">
-        {/* Desktop 2-column layout (Table + Roster), LineupBoard full-width below */}
+        {/* Desktop 2-column layout (Table + Roster/Notes), LineupBoard full-width below */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           <div
             id="minutenplan"
@@ -1021,7 +1232,7 @@ export default function App() {
 
           <div
             id="kader"
-            className={`lg:col-span-4 xl:col-span-3 ${
+            className={`lg:col-span-4 xl:col-span-3 space-y-6 ${
               mobileSection === 'roster' ? 'block' : 'hidden lg:block'
             }`}
           >
@@ -1034,13 +1245,23 @@ export default function App() {
               onUpdatePlayer={handleUpdatePlayer}
               onDeletePlayer={handleDeletePlayer}
             />
+
+            <div className="hidden lg:block">
+              <GameKeysNotes
+                value={plan.keysNotes ?? ''}
+                onChange={handleKeysNotesChange}
+                onBlur={handleKeysNotesFlush}
+              />
+            </div>
           </div>
         </div>
 
         {/* 5-Interval Lineup Board */}
         <div
           id="lineups"
-          className={mobileSection === 'lineups' ? 'block' : 'hidden lg:block'}
+          className={`space-y-6 ${
+            mobileSection === 'lineups' ? 'block' : 'hidden lg:block'
+          }`}
         >
           <LineupBoard
             players={plan.players}
@@ -1055,6 +1276,14 @@ export default function App() {
             onClearInterval={handleClearInterval}
             onCopyPrevious={handleCopyPreviousInterval}
           />
+
+          <div className="lg:hidden">
+            <GameKeysNotes
+              value={plan.keysNotes ?? ''}
+              onChange={handleKeysNotesChange}
+              onBlur={handleKeysNotesFlush}
+            />
+          </div>
         </div>
 
         {/* Chronological Substitution View */}
@@ -1074,12 +1303,30 @@ export default function App() {
             onResetCompletedMinutes={handleResetCompletedMinutes}
           />
         </div>
+
+        {/* Saved Games */}
+        <div
+          id="spiele"
+          className={mobileSection === 'games' ? 'block' : 'hidden lg:block'}
+        >
+          <SavedGamesSection
+            savedGames={savedGames}
+            currentKeysNotes={plan.keysNotes ?? ''}
+            saveModalOpen={isSaveGameModalOpen}
+            onOpenSaveModal={() => setIsSaveGameModalOpen(true)}
+            onCloseSaveModal={() => setIsSaveGameModalOpen(false)}
+            onSaveNewGame={handleSaveNewGame}
+            onUpdateSavedGameWithCurrent={handleUpdateSavedGameWithCurrent}
+            onLoadAsBasis={handleLoadGameAsBasis}
+            onDeleteGame={handleDeleteGame}
+          />
+        </div>
       </main>
 
       {/* Mobile Bottom Tab Bar */}
       <nav
         aria-label="Mobile Navigation"
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-30 h-14 bg-white/95 dark:bg-[#14171F]/95 backdrop-blur-md border-t border-stone-200 dark:border-white/[0.08] grid grid-cols-4"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-30 h-14 bg-white/95 dark:bg-[#14171F]/95 backdrop-blur-md border-t border-stone-200 dark:border-white/[0.08] grid grid-cols-5"
       >
         {(
           [
@@ -1087,6 +1334,7 @@ export default function App() {
             { id: 'subs', label: 'Wechsel' },
             { id: 'lineups', label: 'Lineups' },
             { id: 'roster', label: 'Kader' },
+            { id: 'games', label: 'Spiele' },
           ] as { id: MobileSection; label: string }[]
         ).map((tab) => {
           const active = mobileSection === tab.id;

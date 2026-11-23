@@ -56,12 +56,61 @@
           "enum": ["half", "quarter"],
           "description": "Preferred substitution clock display mode."
         },
+        "keysNotes": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "Coach notes for keys to the game."
+        },
         "updatedAt": {
           "type": "string",
           "format": "date-time"
         }
       },
       "required": ["ownerId", "players", "lineups", "updatedAt"]
+    },
+    "SavedGame": {
+      "title": "SavedGame",
+      "description": "Archived planned rotation and keys-to-the-game notes for a specific game.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "gameDate": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "players": {
+          "type": "array",
+          "description": "Roster snapshot for this saved game (max 40)."
+        },
+        "lineups": {
+          "type": "object",
+          "description": "Planned lineups snapshot for Starting, Transition1, Second, Transition2, and Finish."
+        },
+        "keysNotes": {
+          "type": "string",
+          "maxLength": 4000,
+          "description": "Keys to the game notes."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["ownerId", "title", "players", "lineups", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
@@ -71,7 +120,11 @@
     },
     "/users/{userId}/plans/{planId}": {
       "schema": { "$ref": "#/entities/GamePlan" },
-      "description": "Rotation plans belonging to the user."
+      "description": "Active rotation plan belonging to the user."
+    },
+    "/users/{userId}/games/{gameId}": {
+      "schema": { "$ref": "#/entities/SavedGame" },
+      "description": "Saved game plans that can be viewed and reused as a basis for new gamedays."
     }
   }
 }

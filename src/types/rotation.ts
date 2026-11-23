@@ -33,6 +33,18 @@ export interface GamePlan {
   lineups: Record<IntervalKey, LineupSlot[]>;
   completedMinutes?: number[];
   clockMode?: ClockDisplayMode;
+  keysNotes?: string;
+}
+
+export interface SavedGame {
+  id: string;
+  title: string;
+  gameDate?: string;
+  players: Player[];
+  lineups: Record<IntervalKey, LineupSlot[]>;
+  keysNotes?: string;
+  createdAtMs: number;
+  updatedAtMs: number;
 }
 
 export interface IntervalMeta {

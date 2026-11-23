@@ -6,6 +6,7 @@ import {
   LineupSlot,
   Player,
   PlayerIntervalState,
+  SavedGame,
 } from '../types/rotation';
 
 export function createId(prefix = 'id'): string {
@@ -254,7 +255,7 @@ export function generateObsidianMarkdown(plan: GamePlan): string {
     return `${key}:: ${formattedSlots.join(', ')}`;
   });
 
-  return [
+  const sections = [
     '---',
     'type: gameplan',
     '---',
@@ -263,11 +264,21 @@ export function generateObsidianMarkdown(plan: GamePlan): string {
     '',
     '## Lineups',
     ...lineupLines,
+  ];
+
+  const trimmedNotes = plan.keysNotes?.trim();
+  if (trimmedNotes) {
+    sections.push('', '## Schlüssel im Spiel', trimmedNotes);
+  }
+
+  sections.push(
     '___',
     '```dataviewjs',
     'dv.view("10_Obsidian/20_Views/MinuteTable");',
-    '```',
-  ].join('\n');
+    '```'
+  );
+
+  return sections.join('\n');
 }
 
 function extractFieldSegment(text: string, fieldName: string): string | null {
@@ -285,6 +296,7 @@ function extractFieldSegment(text: string, fieldName: string): string | null {
     '```dataviewjs',
     '### Filter',
     '## Lineups',
+    '## Schlüssel im Spiel',
   ];
   const regex = new RegExp(
     `${fieldName}::\\s*([\\s\\S]*?)(?=(?:${knownFields.join('|')})|$)`,
@@ -380,11 +392,65 @@ export function parseObsidianMarkdown(raw: string): GamePlan {
     }
   }
 
+  const notesMatch = raw.match(
+    /##\s*Schlüssel im Spiel\s*\n([\s\S]*?)(?=(?:\n___|```dataviewjs|\n##\s)|$)/i
+  );
+  const keysNotes = notesMatch ? notesMatch[1].trim().slice(0, 4000) : '';
+
   if (players.length === 0) {
-    return DEFAULT_GAME_PLAN;
+    return keysNotes ? { ...DEFAULT_GAME_PLAN, keysNotes } : DEFAULT_GAME_PLAN;
   }
 
-  return { players, lineups };
+  return keysNotes ? { players, lineups, keysNotes } : { players, lineups };
+}
+
+export function mergeSavedGameAsBasis(
+  savedGame: SavedGame,
+  currentPlayers: Player[],
+  currentClockMode?: GamePlan['clockMode']
+): GamePlan {
+  const savedById = new Map(savedGame.players.map((p) => [p.id, p]));
+  const mergedPlayers: Player[] = savedGame.players.map((p) => ({
+    id: p.id,
+    name: p.name,
+    active: p.active,
+  }));
+
+  for (const current of currentPlayers) {
+    if (!savedById.has(current.id)) {
+      mergedPlayers.push({
+        id: current.id,
+        name: current.name,
+        active: current.active,
+      });
+    }
+  }
+
+  const cloneSlots = (slots: LineupSlot[] = []): LineupSlot[] =>
+    slots.map((slot) =>
+      slot.kind === 'full'
+        ? { id: createId('slot'), kind: 'full', playerId: slot.playerId }
+        : {
+            id: createId('slot'),
+            kind: 'split',
+            firstId: slot.firstId,
+            secondId: slot.secondId,
+          }
+    );
+
+  return {
+    players: mergedPlayers.slice(0, 40),
+    lineups: {
+      Starting: cloneSlots(savedGame.lineups.Starting),
+      Transition1: cloneSlots(savedGame.lineups.Transition1),
+      Second: cloneSlots(savedGame.lineups.Second),
+      Transition2: cloneSlots(savedGame.lineups.Transition2),
+      Finish: cloneSlots(savedGame.lineups.Finish),
+    },
+    completedMinutes: [],
+    clockMode: currentClockMode ?? 'half',
+    keysNotes: savedGame.keysNotes ?? '',
+  };
 }
 
 export interface SubstitutionEvent {
