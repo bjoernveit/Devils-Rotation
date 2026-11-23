@@ -1,0 +1,6 @@
+{
+  "name": "Rotationsplaner",
+  "description": "Minimalistischer Basketball-Rotationsplaner für Halbzeit-Intervalle mit Obsidian-Markdown-Export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

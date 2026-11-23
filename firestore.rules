@@ -1,0 +1,131 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data is map
+        && data.uid is string
+        && data.uid == userId
+        && data.uid == request.auth.uid
+        && data.username is string
+        && data.username.size() >= 3
+        && data.username.size() <= 30
+        && data.username.matches('^[a-zA-Z0-9._\\-]+$')
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidIntervalList(items) {
+      return items is list
+        && items.size() <= 15
+        && (items.size() == 0 || items[0] is map);
+    }
+
+    function isValidLineupsMap(lineups) {
+      return lineups is map
+        && lineups.keys().hasAll(['Starting', 'Transition1', 'Second', 'Transition2', 'Finish'])
+        && lineups.keys().hasOnly(['Starting', 'Transition1', 'Second', 'Transition2', 'Finish'])
+        && isValidIntervalList(lineups.Starting)
+        && isValidIntervalList(lineups.Transition1)
+        && isValidIntervalList(lineups.Second)
+        && isValidIntervalList(lineups.Transition2)
+        && isValidIntervalList(lineups.Finish);
+    }
+
+    function isValidGamePlan(data, userId) {
+      return data is map
+        && data.ownerId is string
+        && data.ownerId == userId
+        && data.ownerId == request.auth.uid
+        && data.players is list
+        && data.players.size() <= 40
+        && (data.players.size() == 0 || data.players[0] is map)
+        && isValidLineupsMap(data.lineups)
+        && data.updatedAt is timestamp;
+    }
+
+    function hasValidParentUser(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId))
+        && get(/databases/$(database)/documents/users/$(userId)).data.uid == request.auth.uid;
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && incoming().keys().hasAll(['uid', 'username', 'createdAt', 'updatedAt'])
+        && incoming().keys().hasOnly(['uid', 'username', 'createdAt', 'updatedAt'])
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['username', 'updatedAt'])
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time;
+
+      allow delete: if isValidId(userId) && isOwner(userId);
+
+      match /plans/{planId} {
+        allow get: if isValidId(userId)
+          && isValidId(planId)
+          && isOwner(userId)
+          && hasValidParentUser(userId);
+
+        allow list: if isOwner(userId) && resource.data.ownerId == request.auth.uid;
+
+        allow create: if isValidId(userId)
+          && isValidId(planId)
+          && isOwner(userId)
+          && incoming().keys().hasAll(['ownerId', 'players', 'lineups', 'updatedAt'])
+          && incoming().keys().hasOnly(['ownerId', 'players', 'lineups', 'updatedAt'])
+          && isValidGamePlan(incoming(), userId)
+          && incoming().updatedAt == request.time
+          && hasValidParentUser(userId);
+
+        allow update: if isValidId(userId)
+          && isValidId(planId)
+          && isOwner(userId)
+          && isValidGamePlan(incoming(), userId)
+          && incoming().diff(existing()).affectedKeys().hasOnly(['players', 'lineups', 'updatedAt'])
+          && incoming().ownerId == existing().ownerId
+          && incoming().updatedAt == request.time
+          && hasValidParentUser(userId);
+
+        allow delete: if isValidId(userId)
+          && isValidId(planId)
+          && isOwner(userId)
+          && hasValidParentUser(userId);
+      }
+    }
+  }
+}
