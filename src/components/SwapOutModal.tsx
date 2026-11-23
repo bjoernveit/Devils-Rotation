@@ -155,7 +155,7 @@ export const SwapOutModal: React.FC<SwapOutModalProps> = ({
       >
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-stone-200 dark:border-white/[0.08]">
           <div className="flex items-center gap-2 min-w-0">
-            <ArrowLeftRight className="w-4 h-4 text-orange-500 shrink-0" />
+            <ArrowLeftRight className="w-4 h-4 text-red-500 shrink-0" />
             <h2 className="font-display text-lg font-bold text-stone-900 dark:text-stone-100 truncate">
               Wer geht für {incomingPlayer.name} raus?
             </h2>
@@ -181,7 +181,7 @@ export const SwapOutModal: React.FC<SwapOutModalProps> = ({
                 <button
                   type="button"
                   onClick={() => onConfirm(candidate)}
-                  className="w-full min-h-[48px] px-3.5 py-2.5 flex items-center justify-between gap-3 text-left bg-white dark:bg-[#14171F] hover:bg-orange-500/[0.07] dark:hover:bg-orange-500/[0.08] transition-colors cursor-pointer"
+                  className="w-full min-h-[48px] px-3.5 py-2.5 flex items-center justify-between gap-3 text-left bg-white dark:bg-[#14171F] hover:bg-red-500/[0.07] dark:hover:bg-red-500/[0.08] transition-colors cursor-pointer"
                 >
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-stone-900 dark:text-stone-100 truncate">

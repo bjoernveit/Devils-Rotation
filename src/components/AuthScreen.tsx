@@ -169,7 +169,7 @@ export const AuthScreen: React.FC = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="z. B. coach_tim"
-                className="w-full h-11 px-3.5 rounded-xl text-sm bg-stone-50 dark:bg-white/[0.04] border border-stone-200 dark:border-white/[0.1] text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-2 focus:outline-orange-500"
+                className="w-full h-11 px-3.5 rounded-xl text-sm bg-stone-50 dark:bg-white/[0.04] border border-stone-200 dark:border-white/[0.1] text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-2 focus:outline-red-500"
               />
             </div>
 
@@ -191,7 +191,7 @@ export const AuthScreen: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Mindestens 6 Zeichen"
-                className="w-full h-11 px-3.5 rounded-xl text-sm bg-stone-50 dark:bg-white/[0.04] border border-stone-200 dark:border-white/[0.1] text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-2 focus:outline-orange-500"
+                className="w-full h-11 px-3.5 rounded-xl text-sm bg-stone-50 dark:bg-white/[0.04] border border-stone-200 dark:border-white/[0.1] text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-2 focus:outline-red-500"
               />
             </div>
 
@@ -210,7 +210,7 @@ export const AuthScreen: React.FC = () => {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full h-11 rounded-xl text-sm font-semibold bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white transition-colors cursor-pointer"
+              className="w-full h-11 rounded-xl text-sm font-semibold bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white transition-colors cursor-pointer"
             >
               {submitting
                 ? 'Bitte warten…'

@@ -125,7 +125,7 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
                 }}
                 rows={12}
                 placeholder={'---\ntype: gameplan\n---\n## Spieler\nSpieler:: [[Tim]], ...'}
-                className="w-full p-3.5 rounded-xl bg-stone-50 dark:bg-[#0D0F14] border border-stone-200 dark:border-white/[0.1] font-mono text-xs leading-relaxed text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-2 focus:outline-orange-500"
+                className="w-full p-3.5 rounded-xl bg-stone-50 dark:bg-[#0D0F14] border border-stone-200 dark:border-white/[0.1] font-mono text-xs leading-relaxed text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-2 focus:outline-red-500"
               />
               {importError && (
                 <p className="text-xs text-rose-500">{importError}</p>
@@ -148,7 +148,7 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
             <button
               type="button"
               onClick={onCopy}
-              className="px-4 py-2 rounded-lg text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-white inline-flex items-center gap-2 transition-colors"
+              className="px-4 py-2 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white inline-flex items-center gap-2 transition-colors"
             >
               {copied ? (
                 <>
@@ -166,7 +166,7 @@ export const MarkdownModal: React.FC<MarkdownModalProps> = ({
             <button
               type="button"
               onClick={handleImportSubmit}
-              className="px-4 py-2 rounded-lg text-xs font-semibold bg-orange-500 hover:bg-orange-600 text-white inline-flex items-center gap-2 transition-colors"
+              className="px-4 py-2 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-700 text-white inline-flex items-center gap-2 transition-colors"
             >
               <Upload className="w-4 h-4" />
               <span>Notiz übernehmen</span>

@@ -139,7 +139,7 @@ export const SubstitutionTimeline: React.FC<SubstitutionTimelineProps> = ({
                   isDone
                     ? 'opacity-45 bg-stone-50/50 dark:bg-white/[0.01]'
                     : involvesSelected
-                    ? 'bg-orange-500/[0.05] dark:bg-orange-500/[0.07]'
+                    ? 'bg-red-500/[0.05] dark:bg-red-500/[0.07]'
                     : 'hover:bg-stone-50/70 dark:hover:bg-white/[0.02]'
                 }`}
               >
@@ -159,7 +159,7 @@ export const SubstitutionTimeline: React.FC<SubstitutionTimelineProps> = ({
                     className={`mt-0.5 sm:mt-0 w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
                       isDone
                         ? 'bg-emerald-500 border-emerald-500 text-white'
-                        : 'border-stone-300 dark:border-white/[0.15] text-transparent hover:border-orange-500'
+                        : 'border-stone-300 dark:border-white/[0.15] text-transparent hover:border-red-500'
                     }`}
                   >
                     <Check className="w-4 h-4" />
@@ -171,7 +171,7 @@ export const SubstitutionTimeline: React.FC<SubstitutionTimelineProps> = ({
                       className={`font-mono text-sm font-semibold tabular-nums whitespace-nowrap ${
                         ev.isStart
                           ? 'text-stone-900 dark:text-stone-100'
-                          : 'text-orange-600 dark:text-orange-400'
+                          : 'text-red-600 dark:text-red-400'
                       }`}
                     >
                       {timeLabel}

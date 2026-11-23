@@ -116,7 +116,7 @@ export const LineupBoard: React.FC<LineupBoardProps> = ({
               onClick={() => onSelectInterval(key)}
               className={`rounded-xl border p-3 flex flex-col justify-between gap-3 transition-colors bg-white dark:bg-[#14171F] ${
                 isSelected
-                  ? 'border-orange-500/60 dark:border-orange-500/50'
+                  ? 'border-red-500/60 dark:border-red-500/50'
                   : 'border-stone-200 dark:border-white/[0.08] hover:border-stone-300 dark:hover:border-white/[0.15]'
               }`}
             >
@@ -125,7 +125,7 @@ export const LineupBoard: React.FC<LineupBoardProps> = ({
                 <div className="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-stone-100 dark:border-white/[0.06]">
                   <div className="min-w-0">
                     <div className="flex items-baseline gap-2">
-                      <span className="font-mono text-xs font-semibold tabular-nums text-orange-600 dark:text-orange-400">
+                      <span className="font-mono text-xs font-semibold tabular-nums text-red-600 dark:text-red-400">
                         {range}
                       </span>
                       <span className="text-sm font-semibold text-stone-900 dark:text-stone-100 truncate">
@@ -154,7 +154,7 @@ export const LineupBoard: React.FC<LineupBoardProps> = ({
                         }}
                         title={`Von ${prevInterval.label} übernehmen`}
                         aria-label={`Lineup von ${prevInterval.label} übernehmen`}
-                        className="p-1 rounded-md text-stone-400 hover:text-orange-500 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                        className="p-1 rounded-md text-stone-400 hover:text-red-500 hover:bg-stone-100 dark:hover:bg-white/[0.06] disabled:opacity-30 disabled:pointer-events-none transition-colors"
                       >
                         <Copy className="w-3.5 h-3.5" />
                       </button>
@@ -190,7 +190,7 @@ export const LineupBoard: React.FC<LineupBoardProps> = ({
                             e.stopPropagation();
                             onCopyPrevious(key);
                           }}
-                          className="w-full py-2 px-2.5 rounded-lg border border-dashed border-stone-300 dark:border-white/[0.12] text-xs font-medium text-stone-600 dark:text-stone-300 hover:border-orange-500/50 hover:text-orange-600 dark:hover:text-orange-400 transition-colors inline-flex items-center justify-center gap-1.5"
+                          className="w-full py-2 px-2.5 rounded-lg border border-dashed border-stone-300 dark:border-white/[0.12] text-xs font-medium text-stone-600 dark:text-stone-300 hover:border-red-500/50 hover:text-red-600 dark:hover:text-red-400 transition-colors inline-flex items-center justify-center gap-1.5"
                         >
                           <Copy className="w-3.5 h-3.5" />
                           <span>Von {prevInterval.label} übernehmen</span>
@@ -213,7 +213,7 @@ export const LineupBoard: React.FC<LineupBoardProps> = ({
                           key={slot.id}
                           className={`rounded-lg px-2.5 py-1.5 border transition-colors ${
                             isHighlighted
-                              ? 'border-orange-500/40 bg-orange-500/[0.07]'
+                              ? 'border-red-500/40 bg-red-500/[0.07]'
                               : 'border-stone-200/80 dark:border-white/[0.06] bg-stone-50/60 dark:bg-white/[0.025]'
                           }`}
                         >
@@ -237,7 +237,7 @@ export const LineupBoard: React.FC<LineupBoardProps> = ({
                                 aria-label={`${player.name} teilen`}
                                 className={`p-1.5 rounded-md transition-colors ${
                                   isSplittingThis
-                                    ? 'text-orange-500 bg-orange-500/10'
+                                    ? 'text-red-500 bg-red-500/10'
                                     : 'text-stone-400 hover:text-stone-700 dark:hover:text-stone-200 hover:bg-stone-200/60 dark:hover:bg-white/[0.06]'
                                 }`}
                               >
@@ -276,7 +276,7 @@ export const LineupBoard: React.FC<LineupBoardProps> = ({
                                     setSplittingTarget(null);
                                   }
                                 }}
-                                className="w-full h-9 rounded-md px-2 text-xs bg-white dark:bg-[#1B1F2A] border border-stone-200 dark:border-white/[0.12] text-stone-800 dark:text-stone-100 focus:outline-2 focus:outline-orange-500"
+                                className="w-full h-9 rounded-md px-2 text-xs bg-white dark:bg-[#1B1F2A] border border-stone-200 dark:border-white/[0.12] text-stone-800 dark:text-stone-100 focus:outline-2 focus:outline-red-500"
                               >
                                 <option value="" disabled>
                                   2. Hälfte wählen (nach {player.name})…
@@ -309,10 +309,10 @@ export const LineupBoard: React.FC<LineupBoardProps> = ({
                         key={slot.id}
                         className={`rounded-lg px-2.5 py-1.5 border transition-colors ${
                           isHighlighted
-                            ? 'border-orange-500/40 bg-orange-500/[0.07]'
+                            ? 'border-red-500/40 bg-red-500/[0.07]'
                             : !p1 || !p2
                             ? 'border-amber-500/40 bg-amber-500/[0.05]'
-                            : 'border-orange-500/25 bg-orange-500/[0.03]'
+                            : 'border-red-500/25 bg-red-500/[0.03]'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-1.5 min-h-[30px]">
@@ -347,7 +347,7 @@ export const LineupBoard: React.FC<LineupBoardProps> = ({
                               }}
                               title="1. und 2. Hälfte tauschen"
                               aria-label="Hälften tauschen"
-                              className="p-1.5 rounded-md text-stone-400 hover:text-orange-500 hover:bg-stone-200/60 dark:hover:bg-white/[0.06] transition-colors"
+                              className="p-1.5 rounded-md text-stone-400 hover:text-red-500 hover:bg-stone-200/60 dark:hover:bg-white/[0.06] transition-colors"
                             >
                               <ArrowLeftRight className="w-3.5 h-3.5" />
                             </button>
@@ -359,7 +359,7 @@ export const LineupBoard: React.FC<LineupBoardProps> = ({
                                   onPromoteHalfToFull(key, slot.id);
                                 }}
                                 title="Auf volle 4 Min erweitern"
-                                className="px-1.5 py-1 rounded text-[11px] font-medium text-orange-600 dark:text-orange-400 hover:bg-orange-500/10"
+                                className="px-1.5 py-1 rounded text-[11px] font-medium text-red-600 dark:text-red-400 hover:bg-red-500/10"
                               >
                                 4&apos;
                               </button>
@@ -396,7 +396,7 @@ export const LineupBoard: React.FC<LineupBoardProps> = ({
                                   onSplitSlot(key, slot.id, e.target.value);
                                 }
                               }}
-                              className="w-full h-9 rounded-md px-2 text-xs bg-white dark:bg-[#1B1F2A] border border-amber-500/30 text-stone-800 dark:text-stone-100 focus:outline-2 focus:outline-orange-500"
+                              className="w-full h-9 rounded-md px-2 text-xs bg-white dark:bg-[#1B1F2A] border border-amber-500/30 text-stone-800 dark:text-stone-100 focus:outline-2 focus:outline-red-500"
                             >
                               <option value="" disabled>
                                 {!p1 ? '1. Hälfte wählen…' : '2. Hälfte wählen…'}
@@ -431,7 +431,7 @@ export const LineupBoard: React.FC<LineupBoardProps> = ({
                           onSetPlayerIntervalState(e.target.value, key, 'full');
                         }
                       }}
-                      className="w-full h-9 pl-8 pr-2 rounded-lg text-xs font-medium bg-stone-50 dark:bg-white/[0.03] border border-dashed border-stone-300 dark:border-white/[0.12] text-stone-600 dark:text-stone-300 hover:border-orange-500/50 focus:outline-2 focus:outline-orange-500 cursor-pointer"
+                      className="w-full h-9 pl-8 pr-2 rounded-lg text-xs font-medium bg-stone-50 dark:bg-white/[0.03] border border-dashed border-stone-300 dark:border-white/[0.12] text-stone-600 dark:text-stone-300 hover:border-red-500/50 focus:outline-2 focus:outline-red-500 cursor-pointer"
                     >
                       <option value="" disabled>
                         Spieler hinzufügen…

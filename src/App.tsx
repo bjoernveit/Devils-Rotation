@@ -766,7 +766,7 @@ export default function App() {
             <button
               type="button"
               onClick={handleCopyMarkdown}
-              className="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-orange-500 hover:bg-orange-600 active:scale-[0.98] text-white inline-flex items-center gap-2 transition-all whitespace-nowrap shrink-0 cursor-pointer"
+              className="px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white inline-flex items-center gap-2 transition-all whitespace-nowrap shrink-0 cursor-pointer"
             >
               {copied ? (
                 <>
@@ -953,7 +953,7 @@ export default function App() {
               onClick={() => setMobileSection(tab.id)}
               className={`flex items-center justify-center text-xs font-semibold transition-colors whitespace-nowrap ${
                 active
-                  ? 'text-orange-600 dark:text-orange-400 border-t-2 border-orange-500 -mt-[1px]'
+                  ? 'text-red-600 dark:text-red-400 border-t-2 border-red-600 dark:border-red-500 -mt-[1px]'
                   : 'text-stone-500 dark:text-stone-400'
               }`}
             >

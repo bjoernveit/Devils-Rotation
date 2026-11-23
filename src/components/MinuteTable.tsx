@@ -318,19 +318,19 @@ export const MinuteTable: React.FC<MinuteTableProps> = ({
                     scope="col"
                     className={`py-2 px-0.5 sm:px-1.5 text-center transition-colors ${
                       isSelected
-                        ? 'bg-orange-500/[0.08] dark:bg-orange-500/[0.1]'
+                        ? 'bg-red-500/[0.08] dark:bg-red-500/[0.1]'
                         : ''
                     }`}
                   >
                     <button
                       type="button"
                       onClick={() => onSelectInterval(key)}
-                      className="w-full min-h-[40px] flex flex-col items-center justify-center rounded-lg px-1 py-1 hover:bg-stone-200/60 dark:hover:bg-white/[0.06] transition-colors focus-visible:outline-2 focus-visible:outline-orange-500"
+                      className="w-full min-h-[40px] flex flex-col items-center justify-center rounded-lg px-1 py-1 hover:bg-stone-200/60 dark:hover:bg-white/[0.06] transition-colors focus-visible:outline-2 focus-visible:outline-red-500"
                     >
                       <span
                         className={`font-mono text-xs sm:text-sm font-semibold tabular-nums whitespace-nowrap ${
                           isSelected
-                            ? 'text-orange-600 dark:text-orange-400'
+                            ? 'text-red-600 dark:text-red-400'
                             : 'text-stone-900 dark:text-stone-100'
                         }`}
                       >
@@ -378,7 +378,7 @@ export const MinuteTable: React.FC<MinuteTableProps> = ({
                     key={player.id}
                     className={`transition-colors ${
                       isRowSelected
-                        ? 'bg-orange-500/[0.06] dark:bg-orange-500/[0.07]'
+                        ? 'bg-red-500/[0.06] dark:bg-red-500/[0.07]'
                         : 'hover:bg-stone-50/90 dark:hover:bg-white/[0.025]'
                     }`}
                   >
@@ -388,7 +388,7 @@ export const MinuteTable: React.FC<MinuteTableProps> = ({
                         onClick={() =>
                           onSelectPlayer(isRowSelected ? null : player.id)
                         }
-                        className="w-full min-h-[42px] flex flex-col justify-center text-left rounded-md px-1 -mx-1 hover:text-orange-600 dark:hover:text-orange-400 transition-colors focus-visible:outline-2 focus-visible:outline-orange-500"
+                        className="w-full min-h-[42px] flex flex-col justify-center text-left rounded-md px-1 -mx-1 hover:text-red-600 dark:hover:text-red-400 transition-colors focus-visible:outline-2 focus-visible:outline-red-500"
                       >
                         <span className="font-medium text-sm leading-tight text-stone-900 dark:text-stone-100 truncate">
                           {player.name}
@@ -425,7 +425,7 @@ export const MinuteTable: React.FC<MinuteTableProps> = ({
                           key={key}
                           className={`p-0.5 sm:p-1 text-center ${
                             isColSelected
-                              ? 'bg-orange-500/[0.04] dark:bg-orange-500/[0.05]'
+                              ? 'bg-red-500/[0.04] dark:bg-red-500/[0.05]'
                               : ''
                           }`}
                         >
@@ -443,11 +443,11 @@ export const MinuteTable: React.FC<MinuteTableProps> = ({
                                 ? '2. Hälfte 2 Minuten'
                                 : 'Bank'
                             }`}
-                            className={`w-full min-w-[42px] min-h-[44px] flex items-center justify-center rounded-lg transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-orange-500 ${
+                            className={`w-full min-w-[42px] min-h-[44px] flex items-center justify-center rounded-lg transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-red-500 ${
                               isCellEditing
-                                ? 'ring-2 ring-orange-500 bg-orange-500/10'
+                                ? 'ring-2 ring-red-500 bg-red-500/10'
                                 : state !== 'bench'
-                                ? 'hover:bg-orange-500/10 active:scale-95'
+                                ? 'hover:bg-red-500/10 active:scale-95'
                                 : 'hover:bg-stone-100 dark:hover:bg-white/[0.06] active:scale-95'
                             }`}
                           >
@@ -552,7 +552,7 @@ export const MinuteTable: React.FC<MinuteTableProps> = ({
               }}
               className={`min-h-[42px] px-2.5 py-1.5 rounded-lg flex items-center justify-between text-xs font-medium transition-colors ${
                 popoverCurrentState === 'full'
-                  ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
+                  ? 'bg-red-500/15 text-red-600 dark:text-red-400'
                   : 'text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06]'
               }`}
             >
@@ -575,7 +575,7 @@ export const MinuteTable: React.FC<MinuteTableProps> = ({
               }}
               className={`min-h-[42px] px-2.5 py-1.5 rounded-lg flex items-center justify-between text-xs font-medium transition-colors ${
                 popoverCurrentState === 'first'
-                  ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
+                  ? 'bg-red-500/15 text-red-600 dark:text-red-400'
                   : 'text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06]'
               }`}
             >
@@ -606,7 +606,7 @@ export const MinuteTable: React.FC<MinuteTableProps> = ({
               }}
               className={`min-h-[42px] px-2.5 py-1.5 rounded-lg flex items-center justify-between text-xs font-medium transition-colors ${
                 popoverCurrentState === 'second'
-                  ? 'bg-orange-500/15 text-orange-600 dark:text-orange-400'
+                  ? 'bg-red-500/15 text-red-600 dark:text-red-400'
                   : 'text-stone-700 dark:text-stone-200 hover:bg-stone-100 dark:hover:bg-white/[0.06]'
               }`}
             >

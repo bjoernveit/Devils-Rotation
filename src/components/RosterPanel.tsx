@@ -73,13 +73,13 @@ export const RosterPanel: React.FC<RosterPanelProps> = ({
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Neuer Spieler…"
             aria-label="Spielername"
-            className="flex-1 min-w-0 h-10 px-3 rounded-lg text-sm bg-stone-50 dark:bg-white/[0.04] border border-stone-200 dark:border-white/[0.1] text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-2 focus:outline-orange-500"
+            className="flex-1 min-w-0 h-10 px-3 rounded-lg text-sm bg-stone-50 dark:bg-white/[0.04] border border-stone-200 dark:border-white/[0.1] text-stone-900 dark:text-stone-100 placeholder:text-stone-400 focus:outline-2 focus:outline-red-500"
           />
           <button
             type="submit"
             disabled={!newName.trim()}
             aria-label="Spieler hinzufügen"
-            className="h-10 px-3.5 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shrink-0"
+            className="h-10 px-3.5 rounded-lg bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:pointer-events-none text-white text-xs font-semibold inline-flex items-center gap-1.5 transition-colors shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Dazu</span>
@@ -105,7 +105,7 @@ export const RosterPanel: React.FC<RosterPanelProps> = ({
                   key={player.id}
                   className={`flex items-center justify-between gap-2 rounded-lg px-2 py-1.5 min-h-[44px] transition-colors ${
                     isSelected
-                      ? 'bg-orange-500/10'
+                      ? 'bg-red-500/10'
                       : 'hover:bg-stone-50 dark:hover:bg-white/[0.03]'
                   } ${!player.active ? 'opacity-50' : ''}`}
                 >
@@ -120,7 +120,7 @@ export const RosterPanel: React.FC<RosterPanelProps> = ({
                       }
                       aria-label={`${player.name} am Spieltag aktiv`}
                       title="Am Spieltag dabei"
-                      className="w-4 h-4 rounded accent-orange-500 cursor-pointer shrink-0"
+                      className="w-4 h-4 rounded accent-red-600 cursor-pointer shrink-0"
                     />
 
                     {isEditing ? (
@@ -134,7 +134,7 @@ export const RosterPanel: React.FC<RosterPanelProps> = ({
                             if (e.key === 'Escape') setEditingId(null);
                           }}
                           autoFocus
-                          className="flex-1 min-w-0 h-8 px-2 rounded text-sm bg-white dark:bg-[#1B1F2A] border border-orange-500 text-stone-900 dark:text-stone-100 focus:outline-none"
+                          className="flex-1 min-w-0 h-8 px-2 rounded text-sm bg-white dark:bg-[#1B1F2A] border border-red-500 text-stone-900 dark:text-stone-100 focus:outline-none"
                         />
                         <button
                           type="button"

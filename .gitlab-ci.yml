@@ -15,7 +15,7 @@ build_app:
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - npm ci
+    - if [ -f package-lock.json ]; then npm ci; else npm install; fi
     - npm run build
     - cp dist/index.html dist/404.html
     - touch dist/.nojekyll
