@@ -4,7 +4,7 @@
 1. Every `/users/{userId}` document can only be read, created, updated, or deleted by the authenticated user whose `request.auth.uid == userId`.
 2. `UserProfile` stores only `uid`, `username` (3–30 chars matching `^[a-zA-Z0-9._\-]+$`), `createdAt`, and `updatedAt` — no PII (`email`, phone, address).
 3. Every `/users/{userId}/plans/{planId}` document requires its parent `/users/{userId}` document to exist and belong to `request.auth.uid`.
-4. `GamePlan` enforces strict keys (`ownerId`, `players`, `lineups`, `updatedAt`), bounded array lengths (`players.size() <= 40`, each interval `<= 15`), and server-enforced `request.time` timestamps.
+4. `GamePlan` enforces strict keys (`ownerId`, `players`, `lineups`, optional `completedMinutes`, optional `clockMode`, `updatedAt`), bounded array lengths (`players.size() <= 40`, each interval `<= 15`, `completedMinutes.size() <= 20`), enum validation on `clockMode`, and server-enforced `request.time` timestamps.
 
 ## Dirty Dozen Payloads (Expected: PERMISSION_DENIED)
 1. Unauthenticated read on `/users/uid1/plans/default`.

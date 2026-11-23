@@ -1,15 +1,23 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { ArrowDownLeft, ArrowUpRight, Check, RotateCcw } from 'lucide-react';
-import { IntervalKey, LineupSlot, Player } from '../types/rotation';
+import {
+  ClockDisplayMode,
+  IntervalKey,
+  LineupSlot,
+  Player,
+} from '../types/rotation';
 import { computeSubstitutionEvents } from '../utils/rotationLogic';
-
-type ClockDisplayMode = 'half' | 'quarter';
 
 interface SubstitutionTimelineProps {
   players: Player[];
   lineups: Record<IntervalKey, LineupSlot[]>;
   selectedPlayerId: string | null;
+  clockMode: ClockDisplayMode;
+  completedMinutes: number[];
   onSelectInterval: (key: IntervalKey) => void;
+  onClockModeChange: (mode: ClockDisplayMode) => void;
+  onToggleCompletedMinute: (minute: number) => void;
+  onResetCompletedMinutes: () => void;
 }
 
 function formatQuarterClock(minute: number): string {
@@ -23,11 +31,13 @@ export const SubstitutionTimeline: React.FC<SubstitutionTimelineProps> = ({
   players,
   lineups,
   selectedPlayerId,
+  clockMode,
+  completedMinutes,
   onSelectInterval,
+  onClockModeChange,
+  onToggleCompletedMinute,
+  onResetCompletedMinutes,
 }) => {
-  const [clockMode, setClockMode] = useState<ClockDisplayMode>('half');
-  const [completedMinutes, setCompletedMinutes] = useState<number[]>([]);
-
   const playersById = useMemo(
     () => new Map(players.map((p) => [p.id, p])),
     [players]
@@ -37,14 +47,6 @@ export const SubstitutionTimeline: React.FC<SubstitutionTimelineProps> = ({
     () => computeSubstitutionEvents(lineups, players),
     [lineups, players]
   );
-
-  const toggleCompleted = (minute: number) => {
-    setCompletedMinutes((prev) =>
-      prev.includes(minute)
-        ? prev.filter((m) => m !== minute)
-        : [...prev, minute]
-    );
-  };
 
   return (
     <section aria-label="Wechselplan nach Zeiten" className="space-y-3">
@@ -62,7 +64,7 @@ export const SubstitutionTimeline: React.FC<SubstitutionTimelineProps> = ({
           {completedMinutes.length > 0 && (
             <button
               type="button"
-              onClick={() => setCompletedMinutes([])}
+              onClick={onResetCompletedMinutes}
               className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-stone-200 dark:border-white/[0.1] bg-white dark:bg-[#14171F] text-stone-600 dark:text-stone-300 hover:text-stone-900 dark:hover:text-stone-100 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
               title="Abgehakte Wechsel zurücksetzen"
             >
@@ -78,7 +80,7 @@ export const SubstitutionTimeline: React.FC<SubstitutionTimelineProps> = ({
           >
             <button
               type="button"
-              onClick={() => setClockMode('half')}
+              onClick={() => onClockModeChange('half')}
               className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                 clockMode === 'half'
                   ? 'bg-white dark:bg-[#1E222D] text-stone-900 dark:text-stone-100 shadow-xs'
@@ -89,7 +91,7 @@ export const SubstitutionTimeline: React.FC<SubstitutionTimelineProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setClockMode('quarter')}
+              onClick={() => onClockModeChange('quarter')}
               className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
                 clockMode === 'quarter'
                   ? 'bg-white dark:bg-[#1E222D] text-stone-900 dark:text-stone-100 shadow-xs'
@@ -149,7 +151,7 @@ export const SubstitutionTimeline: React.FC<SubstitutionTimelineProps> = ({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      toggleCompleted(ev.minute);
+                      onToggleCompletedMinute(ev.minute);
                     }}
                     aria-label={
                       isDone

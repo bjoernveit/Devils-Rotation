@@ -42,6 +42,7 @@ import {
   USERNAME_PATTERN,
 } from './firebase';
 import {
+  ClockDisplayMode,
   DEFAULT_GAME_PLAN,
   GamePlan,
   INTERVALS,
@@ -86,6 +87,18 @@ function readLegacyLocalPlan(): GamePlan | null {
   return null;
 }
 
+function sanitizeCompletedMinutes(value: unknown): number[] {
+  if (!Array.isArray(value)) return [];
+  const valid = value.filter(
+    (n): n is number => typeof n === 'number' && Number.isFinite(n) && n >= 0 && n <= 20
+  );
+  return [...new Set(valid)].sort((a, b) => a - b).slice(0, 20);
+}
+
+function sanitizeClockMode(value: unknown): ClockDisplayMode {
+  return value === 'quarter' ? 'quarter' : 'half';
+}
+
 function sanitizePlanPayload(plan: GamePlan) {
   return {
     players: plan.players.slice(0, 40).map((p) => ({
@@ -100,6 +113,8 @@ function sanitizePlanPayload(plan: GamePlan) {
       Transition2: (plan.lineups.Transition2 || []).slice(0, 15),
       Finish: (plan.lineups.Finish || []).slice(0, 15),
     },
+    completedMinutes: sanitizeCompletedMinutes(plan.completedMinutes),
+    clockMode: sanitizeClockMode(plan.clockMode),
   };
 }
 
@@ -107,12 +122,16 @@ type MobileSection = 'table' | 'subs' | 'lineups' | 'roster';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
+  const [profileUsername, setProfileUsername] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [planLoading, setPlanLoading] = useState(true);
   const [fatalError, setFatalError] = useState<Error | null>(null);
 
   const [plan, setPlan] = useState<GamePlan>(DEFAULT_GAME_PLAN);
   const planRef = useRef<GamePlan>(DEFAULT_GAME_PLAN);
+  const writeQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const pendingWritesRef = useRef<number>(0);
+  const planExistsOnServerRef = useRef<boolean>(false);
 
   const [selectedInterval, setSelectedInterval] =
     useState<IntervalKey>('Starting');
@@ -156,18 +175,21 @@ export default function App() {
       setUser(nextUser);
       setAuthReady(true);
       if (!nextUser) {
+        setProfileUsername(null);
+        planExistsOnServerRef.current = false;
         setPlanLoading(false);
       }
     });
     return () => unsub();
   }, []);
 
-  // Ensure profile exists and subscribe to Firestore gameplan when signed in
+  // Ensure profile + gameplan exist, then subscribe for real-time cross-device sync
   useEffect(() => {
     if (!authReady || !user) return;
 
     let cancelled = false;
     let unsubPlan: (() => void) | null = null;
+    planExistsOnServerRef.current = false;
     setPlanLoading(true);
 
     const bootstrapAndSubscribe = async () => {
@@ -175,7 +197,7 @@ export default function App() {
       const userRef = doc(db, 'users', user.uid);
 
       try {
-        const userSnap = await getDoc(userRef);
+        let userSnap = await getDoc(userRef);
         if (!userSnap.exists()) {
           const fallbackName =
             user.displayName && USERNAME_PATTERN.test(user.displayName)
@@ -186,12 +208,27 @@ export default function App() {
               ? fallbackName
               : 'coach';
 
-          await setDoc(userRef, {
-            uid: user.uid,
-            username: safeUsername,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
+          try {
+            await setDoc(userRef, {
+              uid: user.uid,
+              username: safeUsername,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            });
+            if (!cancelled) setProfileUsername(safeUsername);
+          } catch (createErr) {
+            // If a concurrent request created the profile first, re-read before failing
+            userSnap = await getDoc(userRef);
+            if (!userSnap.exists()) {
+              throw createErr;
+            }
+          }
+        }
+        if (userSnap.exists() && !cancelled) {
+          const data = userSnap.data();
+          if (typeof data.username === 'string') {
+            setProfileUsername(data.username);
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -209,42 +246,80 @@ export default function App() {
       const planPath = `users/${user.uid}/plans/default`;
       const planRefDoc = doc(db, 'users', user.uid, 'plans', 'default');
 
+      try {
+        const initialSnap = await getDoc(planRefDoc);
+        if (cancelled) return;
+
+        if (!initialSnap.exists()) {
+          const legacy = readLegacyLocalPlan();
+          const initial = legacy ?? DEFAULT_GAME_PLAN;
+          const payload = sanitizePlanPayload(initial);
+          await setDoc(planRefDoc, {
+            ownerId: user.uid,
+            ...payload,
+            updatedAt: serverTimestamp(),
+          });
+          planExistsOnServerRef.current = true;
+          if (legacy) {
+            try {
+              localStorage.removeItem(LEGACY_STORAGE_KEY);
+            } catch {
+              // Ignore
+            }
+          }
+          if (!cancelled) {
+            planRef.current = payload;
+            setPlan(payload);
+            setPlanLoading(false);
+          }
+        } else {
+          const data = initialSnap.data();
+          const loaded: GamePlan = {
+            players: Array.isArray(data.players) ? data.players : [],
+            lineups: data.lineups ?? DEFAULT_GAME_PLAN.lineups,
+            completedMinutes: sanitizeCompletedMinutes(data.completedMinutes),
+            clockMode: sanitizeClockMode(data.clockMode),
+          };
+          planExistsOnServerRef.current = true;
+          if (!cancelled) {
+            planRef.current = loaded;
+            setPlan(loaded);
+            setPlanLoading(false);
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          try {
+            handleFirestoreError(err, OperationType.CREATE, planPath);
+          } catch (wrapped) {
+            setFatalError(wrapped as Error);
+          }
+        }
+        return;
+      }
+
+      if (cancelled) return;
+
       unsubPlan = onSnapshot(
         planRefDoc,
-        async (snapshot) => {
+        (snapshot) => {
           if (cancelled) return;
-          if (!snapshot.exists()) {
-            const legacy = readLegacyLocalPlan();
-            const initial = legacy ?? DEFAULT_GAME_PLAN;
-            const payload = sanitizePlanPayload(initial);
-            try {
-              await setDoc(planRefDoc, {
-                ownerId: user.uid,
-                ...payload,
-                updatedAt: serverTimestamp(),
-              });
-              if (legacy) {
-                try {
-                  localStorage.removeItem(LEGACY_STORAGE_KEY);
-                } catch {
-                  // Ignore
-                }
-              }
-            } catch (err) {
-              try {
-                handleFirestoreError(err, OperationType.CREATE, planPath);
-              } catch (wrapped) {
-                setFatalError(wrapped as Error);
-              }
-            }
+          if (
+            snapshot.metadata.hasPendingWrites ||
+            pendingWritesRef.current > 0
+          ) {
             return;
           }
+          if (!snapshot.exists()) return;
 
           const data = snapshot.data();
           const loaded: GamePlan = {
             players: Array.isArray(data.players) ? data.players : [],
             lineups: data.lineups ?? DEFAULT_GAME_PLAN.lineups,
+            completedMinutes: sanitizeCompletedMinutes(data.completedMinutes),
+            clockMode: sanitizeClockMode(data.clockMode),
           };
+          planExistsOnServerRef.current = true;
           planRef.current = loaded;
           setPlan(loaded);
           setPlanLoading(false);
@@ -268,21 +343,58 @@ export default function App() {
     };
   }, [authReady, user]);
 
-  const persistPlanToFirestore = async (uid: string, nextPlan: GamePlan) => {
+  const persistPlanToFirestore = (uid: string, nextPlan: GamePlan) => {
     const planPath = `users/${uid}/plans/default`;
+    const planDocRef = doc(db, 'users', uid, 'plans', 'default');
     const payload = sanitizePlanPayload(nextPlan);
-    try {
-      await updateDoc(doc(db, 'users', uid, 'plans', 'default'), {
-        ...payload,
-        updatedAt: serverTimestamp(),
+
+    pendingWritesRef.current += 1;
+    writeQueueRef.current = writeQueueRef.current
+      .then(async () => {
+        try {
+          if (planExistsOnServerRef.current) {
+            try {
+              await updateDoc(planDocRef, {
+                ...payload,
+                updatedAt: serverTimestamp(),
+              });
+            } catch (err) {
+              const code =
+                typeof err === 'object' && err !== null && 'code' in err
+                  ? String((err as { code: unknown }).code)
+                  : '';
+              if (code === 'not-found') {
+                await setDoc(planDocRef, {
+                  ownerId: uid,
+                  ...payload,
+                  updatedAt: serverTimestamp(),
+                });
+                planExistsOnServerRef.current = true;
+              } else {
+                throw err;
+              }
+            }
+          } else {
+            await setDoc(planDocRef, {
+              ownerId: uid,
+              ...payload,
+              updatedAt: serverTimestamp(),
+            });
+            planExistsOnServerRef.current = true;
+          }
+        } catch (err) {
+          try {
+            handleFirestoreError(err, OperationType.UPDATE, planPath);
+          } catch (wrapped) {
+            setFatalError(wrapped as Error);
+          }
+        } finally {
+          pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
+        }
+      })
+      .catch(() => {
+        pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
       });
-    } catch (err) {
-      try {
-        handleFirestoreError(err, OperationType.UPDATE, planPath);
-      } catch (wrapped) {
-        setFatalError(wrapped as Error);
-      }
-    }
   };
 
   const commitPlan = (updater: (prev: GamePlan) => GamePlan) => {
@@ -290,7 +402,7 @@ export default function App() {
     planRef.current = next;
     setPlan(next);
     if (user) {
-      void persistPlanToFirestore(user.uid, next);
+      persistPlanToFirestore(user.uid, next);
     }
   };
 
@@ -690,6 +802,33 @@ export default function App() {
     setSelectedPlayerId(null);
   };
 
+  const handleClockModeChange = (mode: ClockDisplayMode) => {
+    commitPlan((prev) => ({
+      ...prev,
+      clockMode: mode,
+    }));
+  };
+
+  const handleToggleCompletedMinute = (minute: number) => {
+    commitPlan((prev) => {
+      const current = prev.completedMinutes ?? [];
+      const nextMinutes = current.includes(minute)
+        ? current.filter((m) => m !== minute)
+        : [...current, minute].sort((a, b) => a - b);
+      return {
+        ...prev,
+        completedMinutes: nextMinutes,
+      };
+    });
+  };
+
+  const handleResetCompletedMinutes = () => {
+    commitPlan((prev) => ({
+      ...prev,
+      completedMinutes: [],
+    }));
+  };
+
   const handleSignOut = async () => {
     await signOut(auth);
     setSelectedPlayerId(null);
@@ -708,7 +847,7 @@ export default function App() {
   }
 
   const displayUsername =
-    user.displayName || user.email?.split('@')[0] || 'Coach';
+    profileUsername || user.displayName || user.email?.split('@')[0] || 'Coach';
 
   return (
     <div className="min-h-screen flex flex-col bg-stone-50 dark:bg-[#0D0F14] text-stone-900 dark:text-stone-100">
@@ -927,7 +1066,12 @@ export default function App() {
             players={plan.players}
             lineups={plan.lineups}
             selectedPlayerId={selectedPlayerId}
+            clockMode={plan.clockMode ?? 'half'}
+            completedMinutes={plan.completedMinutes ?? []}
             onSelectInterval={setSelectedInterval}
+            onClockModeChange={handleClockModeChange}
+            onToggleCompletedMinute={handleToggleCompletedMinute}
+            onResetCompletedMinutes={handleResetCompletedMinutes}
           />
         </div>
       </main>

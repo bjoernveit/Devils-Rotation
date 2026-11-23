@@ -47,6 +47,15 @@
           "type": "object",
           "description": "Lineups for Starting, Transition1, Second, Transition2, and Finish."
         },
+        "completedMinutes": {
+          "type": "array",
+          "description": "Checked-off substitution minutes in the current half (max 20)."
+        },
+        "clockMode": {
+          "type": "string",
+          "enum": ["half", "quarter"],
+          "description": "Preferred substitution clock display mode."
+        },
         "updatedAt": {
           "type": "string",
           "format": "date-time"

@@ -4,13 +4,9 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
   auth,
-  db,
   FIREBASE_PROJECT_ID,
-  handleFirestoreError,
-  OperationType,
   USERNAME_PATTERN,
   usernameToBackgroundEmail,
 } from '../firebase';
@@ -74,18 +70,6 @@ export const AuthScreen: React.FC = () => {
           password
         );
         await updateProfile(cred.user, { displayName: trimmed });
-
-        const userPath = `users/${cred.user.uid}`;
-        try {
-          await setDoc(doc(db, 'users', cred.user.uid), {
-            uid: cred.user.uid,
-            username: trimmed,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
-        } catch (fsErr) {
-          handleFirestoreError(fsErr, OperationType.CREATE, userPath);
-        }
       } else {
         await signInWithEmailAndPassword(auth, backgroundEmail, password);
       }

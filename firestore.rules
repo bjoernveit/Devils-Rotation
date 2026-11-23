@@ -65,6 +65,15 @@ service cloud.firestore {
         && data.players.size() <= 40
         && (data.players.size() == 0 || data.players[0] is map)
         && isValidLineupsMap(data.lineups)
+        && (!('completedMinutes' in data) || (
+          data.completedMinutes is list
+          && data.completedMinutes.size() <= 20
+          && (data.completedMinutes.size() == 0 || data.completedMinutes[0] is number)
+        ))
+        && (!('clockMode' in data) || (
+          data.clockMode is string
+          && data.clockMode in ['half', 'quarter']
+        ))
         && data.updatedAt is timestamp;
     }
 
@@ -107,7 +116,7 @@ service cloud.firestore {
           && isValidId(planId)
           && isOwner(userId)
           && incoming().keys().hasAll(['ownerId', 'players', 'lineups', 'updatedAt'])
-          && incoming().keys().hasOnly(['ownerId', 'players', 'lineups', 'updatedAt'])
+          && incoming().keys().hasOnly(['ownerId', 'players', 'lineups', 'completedMinutes', 'clockMode', 'updatedAt'])
           && isValidGamePlan(incoming(), userId)
           && incoming().updatedAt == request.time
           && hasValidParentUser(userId);
@@ -116,7 +125,7 @@ service cloud.firestore {
           && isValidId(planId)
           && isOwner(userId)
           && isValidGamePlan(incoming(), userId)
-          && incoming().diff(existing()).affectedKeys().hasOnly(['players', 'lineups', 'updatedAt'])
+          && incoming().diff(existing()).affectedKeys().hasOnly(['players', 'lineups', 'completedMinutes', 'clockMode', 'updatedAt'])
           && incoming().ownerId == existing().ownerId
           && incoming().updatedAt == request.time
           && hasValidParentUser(userId);

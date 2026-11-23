@@ -26,9 +26,13 @@ export type LineupSlot =
       secondId: string | null;
     };
 
+export type ClockDisplayMode = 'half' | 'quarter';
+
 export interface GamePlan {
   players: Player[];
   lineups: Record<IntervalKey, LineupSlot[]>;
+  completedMinutes?: number[];
+  clockMode?: ClockDisplayMode;
 }
 
 export interface IntervalMeta {
