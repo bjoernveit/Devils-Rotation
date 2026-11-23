@@ -20,10 +20,25 @@ const configModules = import.meta.glob<{ default: AppletFirebaseConfig }>(
 const bundledConfig = Object.values(configModules)[0]?.default;
 
 function parseEnvFirebaseConfig(): Partial<AppletFirebaseConfig> | null {
-  const raw = import.meta.env.VITE_FIREBASE_CONFIG;
+  let raw = import.meta.env.VITE_FIREBASE_CONFIG;
   if (!raw || typeof raw !== 'string') return null;
+  raw = raw.trim();
+  if (
+    (raw.startsWith("'") && raw.endsWith("'")) ||
+    (raw.startsWith('`') && raw.endsWith('`'))
+  ) {
+    raw = raw.slice(1, -1).trim();
+  }
   try {
-    return JSON.parse(raw) as Partial<AppletFirebaseConfig>;
+    let parsed: unknown = JSON.parse(raw);
+    if (typeof parsed === 'string') {
+      parsed = JSON.parse(parsed);
+    }
+    if (parsed && typeof parsed === 'object') {
+      return parsed as Partial<AppletFirebaseConfig>;
+    }
+    console.error('VITE_FIREBASE_CONFIG must be a JSON object.');
+    return null;
   } catch {
     console.error('Invalid VITE_FIREBASE_CONFIG JSON.');
     return null;
@@ -45,6 +60,12 @@ const firebaseConfig: AppletFirebaseConfig = {
     bundledConfig?.firestoreDatabaseId ||
     '(default)',
 };
+
+if (!firebaseConfig.apiKey) {
+  console.error(
+    'Firebase apiKey is missing. Ensure VITE_FIREBASE_CONFIG is set as a valid JSON Repository Secret during build.'
+  );
+}
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(

@@ -17,7 +17,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,6 +44,28 @@ jobs:
           VITE_FIREBASE_CONFIG: ${{ secrets.VITE_FIREBASE_CONFIG }}
           VITE_BASE_PATH: ${{ vars.VITE_BASE_PATH || (github.event.repository.name == format('{0}.github.io', github.repository_owner) && '/' || format('/{0}/', github.event.repository.name)) }}
         run: |
+          node -e '
+            let raw = (process.env.VITE_FIREBASE_CONFIG || "").trim();
+            if (!raw) {
+              console.error("ERROR: VITE_FIREBASE_CONFIG secret is empty. Add it under Settings -> Environments -> github-pages -> Environment secrets or Repository secrets.");
+              process.exit(1);
+            }
+            if ((raw.startsWith("\x27") && raw.endsWith("\x27")) || (raw.startsWith("`") && raw.endsWith("`"))) {
+              raw = raw.slice(1, -1).trim();
+            }
+            let cfg;
+            try {
+              cfg = JSON.parse(raw);
+              if (typeof cfg === "string") cfg = JSON.parse(cfg);
+            } catch (e) {
+              console.error("ERROR: VITE_FIREBASE_CONFIG is not valid JSON:", e.message);
+              process.exit(1);
+            }
+            if (!cfg || !cfg.apiKey || !cfg.projectId || !cfg.appId) {
+              console.error("ERROR: VITE_FIREBASE_CONFIG is missing required fields (apiKey, projectId, appId).");
+              process.exit(1);
+            }
+          '
           npm run build
           cp dist/index.html dist/404.html
           touch dist/.nojekyll
@@ -53,13 +78,6 @@ jobs:
         with:
           path: ./dist
 
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

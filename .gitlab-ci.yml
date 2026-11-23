@@ -16,6 +16,29 @@ build_app:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - if [ -f package-lock.json ]; then npm ci; else npm install; fi
+    - |
+      node -e '
+        let raw = (process.env.VITE_FIREBASE_CONFIG || "").trim();
+        if (!raw) {
+          console.error("ERROR: VITE_FIREBASE_CONFIG CI variable is empty.");
+          process.exit(1);
+        }
+        if ((raw.startsWith("\x27") && raw.endsWith("\x27")) || (raw.startsWith("`") && raw.endsWith("`"))) {
+          raw = raw.slice(1, -1).trim();
+        }
+        let cfg;
+        try {
+          cfg = JSON.parse(raw);
+          if (typeof cfg === "string") cfg = JSON.parse(cfg);
+        } catch (e) {
+          console.error("ERROR: VITE_FIREBASE_CONFIG is not valid JSON:", e.message);
+          process.exit(1);
+        }
+        if (!cfg || !cfg.apiKey || !cfg.projectId || !cfg.appId) {
+          console.error("ERROR: VITE_FIREBASE_CONFIG is missing required fields (apiKey, projectId, appId).");
+          process.exit(1);
+        }
+      '
     - npm run build
     - cp dist/index.html dist/404.html
     - touch dist/.nojekyll
